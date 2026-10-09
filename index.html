@@ -5,28 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MapScrap by Rohit Mehmi</title>
     
-    <!-- Custom Favicon -->
+    <!-- Custom Favicon using your cropped mascot -->
     <link rel="icon" type="image/png" href="assets/favicon.png">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            50: '#fff7ed',
-                            100: '#ffedd5',
-                            500: '#f97316',
-                            600: '#ea580c',
-                            700: '#c2410c'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
 
     <!-- Leaflet Maps CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -37,35 +20,36 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0f172a; }
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         #map { z-index: 1; }
     </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden text-slate-100">
+<body class="h-screen flex flex-col overflow-hidden text-slate-800">
 
-    <!-- Top Navigation Bar -->
-    <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-6 py-3.5 flex items-center justify-between z-10 shrink-0">
+    <!-- Header Navigation with Logo Image -->
+    <header class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between z-10 shrink-0">
         <div class="flex items-center gap-3">
-            <img src="assets/logo.png" alt="MapScrap by Rohit Mehmi" class="h-10 w-auto object-contain">
-            <span class="text-xs font-semibold px-2.5 py-1 bg-brand-500/10 text-brand-500 border border-brand-500/20 rounded-md hidden sm:inline-block">
+            <img src="assets/logo.png" alt="MapScrap by Rohit Mehmi" class="h-11 w-auto object-contain">
+            <span class="text-xs font-bold px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full uppercase tracking-wider hidden sm:inline-block">Lead Gen</span>
+            <span class="text-xs font-semibold px-2.5 py-0.5 bg-slate-100 text-slate-600 rounded-md border border-slate-200 hidden md:inline-block">
                 By Rohit Mehmi
             </span>
         </div>
 
-        <div class="flex items-center gap-3">
-            <div id="activeQuotaBadge" class="hidden text-xs bg-brand-500/10 border border-brand-500/20 text-brand-500 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-2">
-                <i class="fa-solid fa-bolt text-brand-500 animate-pulse"></i>
+        <div class="flex items-center gap-4">
+            <div id="activeQuotaBadge" class="hidden text-sm bg-indigo-50 border border-indigo-100 text-indigo-700 px-3.5 py-1.5 rounded-full font-semibold flex items-center gap-2">
+                <i class="fa-solid fa-bolt text-indigo-500 animate-pulse"></i>
                 <span>Remaining: <span id="quotaCount" class="font-bold">0</span> Searches</span>
             </div>
-            <div id="ipBadge" class="text-xs bg-slate-800/80 border border-slate-700/80 text-slate-300 px-3 py-1.5 rounded-lg font-mono flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                <span id="ipAddressText">Detecting IP...</span>
+            <div id="ipBadge" class="text-xs bg-slate-100 border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg font-mono flex items-center gap-1.5">
+                <i class="fa-solid fa-wifi text-slate-400"></i>
+                <span id="ipAddressText">Detecting...</span>
             </div>
-            <button onclick="lockAppManually()" title="Lock Session" class="text-slate-400 hover:text-rose-400 text-xs px-2.5 py-1.5 rounded-lg hover:bg-slate-800 transition-colors">
+            <button onclick="lockAppManually()" title="Lock Session" class="text-slate-400 hover:text-rose-500 text-sm p-1.5 rounded-lg hover:bg-slate-100 transition">
                 <i class="fa-solid fa-lock"></i>
             </button>
         </div>
@@ -75,38 +59,38 @@
     <main class="flex-1 flex overflow-hidden">
         
         <!-- Left Panel: Search & Lead Table -->
-        <section class="w-full lg:w-3/5 flex flex-col border-r border-slate-800 bg-slate-900/50">
+        <section class="w-full lg:w-3/5 flex flex-col border-r border-slate-200 bg-white">
             
             <!-- Search Control Bar -->
-            <div class="p-4 bg-slate-900/80 border-b border-slate-800 shrink-0">
+            <div class="p-4 bg-slate-50 border-b border-slate-200 shrink-0">
                 <form id="searchForm" onsubmit="handleSearch(event)" class="space-y-3">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div class="relative">
-                            <i class="fa-solid fa-briefcase absolute left-3.5 top-3.5 text-slate-500 text-sm"></i>
+                            <i class="fa-solid fa-briefcase absolute left-3.5 top-3.5 text-slate-400 text-sm"></i>
                             <input type="text" id="businessKeyword" required placeholder="e.g. Gyms, Real Estate, Dental Clinic" 
-                                class="w-full pl-10 pr-3.5 py-2.5 bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-500 rounded-lg text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition">
+                                class="w-full pl-10 pr-3.5 py-2.5 bg-white border border-slate-300 text-slate-900 placeholder-slate-400 rounded-lg text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition">
                         </div>
                         <div class="relative">
-                            <i class="fa-solid fa-location-dot absolute left-3.5 top-3.5 text-slate-500 text-sm"></i>
+                            <i class="fa-solid fa-location-dot absolute left-3.5 top-3.5 text-slate-400 text-sm"></i>
                             <input type="text" id="targetLocation" required placeholder="e.g. Patiala, Punjab or London, UK" 
-                                class="w-full pl-10 pr-3.5 py-2.5 bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-500 rounded-lg text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition">
+                                class="w-full pl-10 pr-3.5 py-2.5 bg-white border border-slate-300 text-slate-900 placeholder-slate-400 rounded-lg text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition">
                         </div>
                     </div>
 
                     <div class="flex items-center justify-between gap-3 pt-1">
                         <div class="flex items-center gap-2">
-                            <button type="submit" id="searchSubmitBtn" class="bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm px-5 py-2 rounded-lg transition-colors flex items-center gap-2 shadow-lg shadow-brand-600/20">
+                            <button type="submit" id="searchSubmitBtn" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm px-5 py-2 rounded-lg transition flex items-center gap-2 shadow-sm">
                                 <i class="fa-solid fa-magnifying-glass"></i>
                                 <span>Extract Leads</span>
                             </button>
-                            <button type="button" onclick="clearResults()" class="text-xs text-slate-400 hover:text-slate-200 px-3 py-2 rounded-lg hover:bg-slate-800 transition">
+                            <button type="button" onclick="clearResults()" class="text-xs text-slate-500 hover:text-slate-700 px-3 py-2 rounded-lg hover:bg-slate-200 transition">
                                 Clear
                             </button>
                         </div>
 
                         <div class="flex items-center gap-2">
-                            <button type="button" onclick="exportToCSV()" id="exportBtn" disabled class="disabled:opacity-40 disabled:cursor-not-allowed bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-medium px-3.5 py-2 rounded-lg transition flex items-center gap-2">
-                                <i class="fa-solid fa-file-csv text-emerald-400"></i>
+                            <button type="button" onclick="exportToCSV()" id="exportBtn" disabled class="disabled:opacity-40 disabled:cursor-not-allowed bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs font-medium px-3.5 py-2 rounded-lg transition flex items-center gap-2 shadow-sm">
+                                <i class="fa-solid fa-file-csv text-emerald-600"></i>
                                 <span>Export CSV</span>
                             </button>
                         </div>
@@ -116,50 +100,50 @@
 
             <!-- Leads Results List -->
             <div id="resultsContainer" class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
-                <div id="emptyState" class="h-full flex flex-col items-center justify-center text-center p-8 text-slate-500">
-                    <img src="assets/favicon.png" alt="Mascot" class="w-16 h-16 object-contain mb-3 opacity-30">
-                    <p class="text-sm font-medium text-slate-400">Ready to Extract Verified Leads</p>
-                    <p class="text-xs text-slate-600 max-w-sm mt-1">Enter a business category and city above to retrieve phone numbers, addresses, ratings, and map locations.</p>
+                <div id="emptyState" class="h-full flex flex-col items-center justify-center text-center p-8 text-slate-400">
+                    <img src="assets/favicon.png" alt="Mascot" class="w-16 h-16 object-contain mb-3 opacity-40">
+                    <p class="text-sm font-semibold text-slate-600">Ready to Discover Leads</p>
+                    <p class="text-xs text-slate-400 max-w-sm mt-1">Enter a business category and city above to retrieve phone numbers, addresses, ratings, and map locations.</p>
                 </div>
                 <div id="leadsList" class="space-y-3 hidden"></div>
             </div>
 
             <!-- Result Count Footer -->
-            <div class="px-4 py-2.5 bg-slate-900 border-t border-slate-800 text-xs text-slate-400 flex items-center justify-between shrink-0">
-                <div>Leads found: <span id="leadCount" class="font-bold text-slate-200">0</span></div>
-                <div>Status: <span id="statusIndicator" class="text-emerald-400">Ready</span></div>
+            <div class="px-4 py-2.5 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex items-center justify-between shrink-0">
+                <div>Leads found: <span id="leadCount" class="font-bold text-slate-800">0</span></div>
+                <div>Status: <span id="statusIndicator" class="text-emerald-600 font-medium">Ready</span></div>
             </div>
         </section>
 
         <!-- Right Panel: Live Geographic Map -->
-        <section class="hidden lg:block lg:w-2/5 relative h-full bg-slate-950">
+        <section class="hidden lg:block lg:w-2/5 relative h-full bg-slate-100">
             <div id="map" class="w-full h-full"></div>
         </section>
 
     </main>
 
     <!-- GATEKEEPER LOCK SCREEN MODAL -->
-    <div id="gatekeeperModal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative text-center">
+    <div id="gatekeeperModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-2xl relative text-center">
             
             <div class="w-16 h-16 mx-auto mb-4 relative">
                 <img src="assets/favicon.png" alt="MapScrap Access" class="w-full h-full object-contain">
             </div>
 
-            <h2 class="text-lg font-bold text-slate-100 mb-1">Access Restricted</h2>
-            <p class="text-xs text-slate-400 mb-5">
-                MapScrap is an exclusive utility developed by <span class="text-brand-500 font-semibold">Rohit Mehmi</span>. Request instant authorization to begin searching.
+            <h2 class="text-lg font-bold text-slate-900 mb-1">Access Restricted</h2>
+            <p class="text-xs text-slate-500 mb-5">
+                MapScrap is an exclusive utility developed by <span class="text-orange-600 font-semibold">Rohit Mehmi</span>. Request instant authorization to begin searching.
             </p>
 
             <!-- Visitor Details Card -->
-            <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3 text-left mb-4 text-xs space-y-1.5">
-                <div class="flex justify-between items-center text-slate-400">
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-left mb-4 text-xs space-y-1.5">
+                <div class="flex justify-between items-center text-slate-500">
                     <span>Your Public IP:</span>
-                    <span id="modalVisitorIP" class="font-mono text-slate-200">Detecting...</span>
+                    <span id="modalVisitorIP" class="font-mono text-slate-800 font-semibold">Detecting...</span>
                 </div>
-                <div class="flex justify-between items-center text-slate-400">
+                <div class="flex justify-between items-center text-slate-500">
                     <span>Target Network:</span>
-                    <span class="text-slate-200">serper.dev / Google Maps</span>
+                    <span class="text-slate-800">serper.dev / Google Maps</span>
                 </div>
             </div>
 
@@ -167,14 +151,14 @@
             <div id="requestFormSection">
                 <div class="space-y-3 text-left mb-4">
                     <div>
-                        <label class="block text-xs font-medium text-slate-300 mb-1">Your Full Name</label>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Your Full Name</label>
                         <input type="text" id="visitorName" placeholder="Enter your name" 
-                            class="w-full px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500">
+                            class="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-orange-500">
                     </div>
                 </div>
 
                 <button onclick="sendAccessRequest()" id="requestAccessBtn" 
-                    class="w-full py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs rounded-lg transition flex items-center justify-center gap-2 shadow-lg shadow-brand-600/30">
+                    class="w-full py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs rounded-lg transition flex items-center justify-center gap-2 shadow-md shadow-orange-500/20">
                     <i class="fa-paper-plane fa-solid"></i>
                     <span>Request Access from Rohit Mehmi</span>
                 </button>
@@ -182,22 +166,22 @@
 
             <!-- Waiting for Approval Status -->
             <div id="waitingStatusSection" class="hidden text-center py-4">
-                <div class="inline-block animate-spin text-brand-500 text-2xl mb-2">
+                <div class="inline-block animate-spin text-orange-500 text-2xl mb-2">
                     <i class="fa-solid fa-circle-notch"></i>
                 </div>
-                <p class="text-xs font-semibold text-slate-200">Request Sent to Rohit Mehmi</p>
-                <p class="text-[11px] text-slate-400 mt-1">Listening for instant approval... (auto-unlocking)</p>
+                <p class="text-xs font-bold text-slate-800">Request Sent to Rohit Mehmi</p>
+                <p class="text-[11px] text-slate-500 mt-1">Listening for instant approval... (auto-unlocking)</p>
             </div>
 
             <!-- Owner Bypass Toggle -->
-            <div class="mt-6 pt-4 border-t border-slate-800">
-                <button onclick="toggleOwnerBypass()" class="text-[11px] text-slate-500 hover:text-slate-400 transition">
+            <div class="mt-6 pt-4 border-t border-slate-100">
+                <button onclick="toggleOwnerBypass()" class="text-[11px] text-slate-400 hover:text-slate-600 transition">
                     Owner Bypass
                 </button>
                 <div id="ownerBypassBox" class="hidden mt-3 flex gap-2">
                     <input type="password" id="masterKeyInput" placeholder="Enter master key" 
-                        class="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500">
-                    <button onclick="verifyMasterKey()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-xs font-semibold rounded-lg text-slate-200">
+                        class="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-orange-500">
+                    <button onclick="verifyMasterKey()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold rounded-lg text-white">
                         Unlock
                     </button>
                 </div>
@@ -208,7 +192,6 @@
 
     <!-- Application Script -->
     <script>
-        // CONFIGURATION
         const BOT_TOKEN = "8943164560:AAFMLMm0_X0jUwp6fmkHGgzCAUDu4pR430o";
         const ADMIN_CHAT_ID = "2081404500";
         const SERPER_KEY = "eb4f19fd7820ab0e0b3874134be5db741757813a";
@@ -224,7 +207,6 @@
         let map = null;
         let mapMarkers = [];
 
-        // INITIALIZE MAP & SYSTEM
         document.addEventListener("DOMContentLoaded", () => {
             initLeafletMap();
             resolveVisitorIP();
@@ -233,8 +215,8 @@
 
         function initLeafletMap() {
             map = L.map('map').setView([30.3398, 76.3869], 12);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
                 maxZoom: 19
             }).addTo(map);
         }
@@ -313,7 +295,6 @@
             }
         }
 
-        // TELEGRAM DISPATCH & LIVE POLLING
         async function sendAccessRequest() {
             activeVisitorName = document.getElementById('visitorName').value.trim() || 'Anonymous Visitor';
             localStorage.setItem('mapscrap_user', activeVisitorName);
@@ -327,7 +308,7 @@
                                 `🌐 <b>IP:</b> <code>${visitorIP}</code>\n` +
                                 `🔑 <b>Request ID:</b> <code>${activeRequestId}</code>\n` +
                                 `🕒 <b>Time:</b> ${new Date().toLocaleTimeString()}\n\n` +
-                                `<i>Select a search quota to approve:</i>`;
+                                `<i>Select search quota to approve:</i>`;
 
             const keyboard = {
                 inline_keyboard: [
@@ -378,7 +359,6 @@
                         for (const update of data.result) {
                             lastTelegramUpdateId = update.update_id;
 
-                            // Inline Button Handling
                             if (update.callback_query) {
                                 const cbData = update.callback_query.data;
                                 if (cbData.includes(activeRequestId)) {
@@ -395,7 +375,6 @@
                                 }
                             }
 
-                            // Direct Text Reply Handling
                             if (update.message && String(update.message.chat.id) === String(ADMIN_CHAT_ID)) {
                                 const text = (update.message.text || '').trim();
                                 if (MASTER_KEYS.includes(text)) {
@@ -457,7 +436,6 @@
             }
         }
 
-        // LEAD SEARCH & LIVE NOTIFICATION
         async function handleSearch(event) {
             event.preventDefault();
 
@@ -499,7 +477,6 @@
                     updateQuotaDisplay();
                 }
 
-                // Send Search Activity Alert to Telegram
                 const remainingLabel = visitorQuota === Infinity ? 'Unlimited' : visitorQuota;
                 sendTelegramAlert(
                     `🔍 <b>New Search Conducted</b>\n\n` +
@@ -563,36 +540,36 @@
                 const lng = item.longitude;
 
                 const card = document.createElement('div');
-                card.className = "bg-slate-800/80 border border-slate-700/80 rounded-xl p-4 hover:border-brand-500/50 transition";
+                card.className = "bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-orange-400 hover:shadow transition";
                 card.innerHTML = `
                     <div class="flex items-start justify-between gap-3">
                         <div>
-                            <h3 class="text-sm font-bold text-slate-100">${idx + 1}. ${title}</h3>
-                            <p class="text-xs text-slate-400 mt-0.5"><i class="fa-solid fa-location-dot text-slate-500 mr-1"></i>${address}</p>
+                            <h3 class="text-sm font-bold text-slate-800">${idx + 1}. ${title}</h3>
+                            <p class="text-xs text-slate-500 mt-0.5"><i class="fa-solid fa-location-dot text-slate-400 mr-1"></i>${address}</p>
                         </div>
-                        <span class="text-xs font-semibold px-2 py-0.5 bg-slate-700 text-amber-300 rounded-md shrink-0">${rating}</span>
+                        <span class="text-xs font-semibold px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 rounded-md shrink-0">${rating}</span>
                     </div>
 
-                    <div class="mt-3 pt-3 border-t border-slate-700/60 flex items-center justify-between flex-wrap gap-2 text-xs">
+                    <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2 text-xs">
                         <div class="flex items-center gap-2">
                             ${phone ? `
-                                <a href="tel:${phone}" class="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-md font-mono hover:bg-emerald-500/20 transition flex items-center gap-1.5">
-                                    <i class="fa-solid fa-phone"></i> ${phone}
+                                <a href="tel:${phone}" class="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md font-mono hover:bg-emerald-100 transition flex items-center gap-1.5 font-semibold">
+                                    <i class="fa-solid fa-phone text-emerald-600"></i> ${phone}
                                 </a>
-                                <a href="https://wa.me/${phone.replace(/[^0-9]/g, '')}" target="_blank" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md transition flex items-center gap-1">
+                                <a href="https://wa.me/${phone.replace(/[^0-9]/g, '')}" target="_blank" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md transition flex items-center gap-1">
                                     <i class="fa-brands fa-whatsapp"></i>
                                 </a>
                             ` : `
-                                <span class="text-slate-500 italic"><i class="fa-solid fa-phone-slash mr-1"></i>No Direct Phone</span>
+                                <span class="text-slate-400 italic"><i class="fa-solid fa-phone-slash mr-1"></i>No Direct Phone</span>
                             `}
                         </div>
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-3">
                             ${item.website ? `
-                                <a href="${item.website}" target="_blank" class="text-brand-400 hover:text-brand-300 text-xs flex items-center gap-1">
+                                <a href="${item.website}" target="_blank" class="text-orange-600 hover:text-orange-700 font-medium flex items-center gap-1">
                                     <i class="fa-solid fa-globe"></i> Web
                                 </a>
                             ` : ''}
-                            <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(title + ' ' + address)}" target="_blank" class="text-slate-400 hover:text-slate-200 text-xs">
+                            <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(title + ' ' + address)}" target="_blank" class="text-slate-500 hover:text-slate-700 flex items-center gap-1">
                                 <i class="fa-solid fa-arrow-up-right-from-square"></i> Maps
                             </a>
                         </div>
