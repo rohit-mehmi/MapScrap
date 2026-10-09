@@ -54,7 +54,7 @@
     <!-- Main Workspace Layout -->
     <main class="flex-1 flex overflow-hidden">
         
-        <!-- Left Panel: Search & Lead Cards -->
+        <!-- Left Panel: Search, Metrics & Lead Cards -->
         <section class="w-full lg:w-3/5 flex flex-col border-r border-slate-200 bg-slate-50">
             
             <!-- Search Control Bar -->
@@ -94,12 +94,32 @@
                 </form>
             </div>
 
+            <!-- Lead Intelligence Metrics Strip -->
+            <div id="analyticsStrip" class="hidden px-4 py-2.5 bg-slate-100 border-b border-slate-200 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs shrink-0">
+                <div class="bg-white border border-slate-200 rounded-lg p-2 text-center shadow-xs">
+                    <span class="text-slate-400 block text-[10px] uppercase font-bold tracking-wide">Total Leads</span>
+                    <span id="metricTotal" class="text-sm font-extrabold text-slate-800">0</span>
+                </div>
+                <div class="bg-white border border-amber-200 bg-amber-50/40 rounded-lg p-2 text-center shadow-xs">
+                    <span class="text-amber-600 block text-[10px] uppercase font-bold tracking-wide">No Website (Gold)</span>
+                    <span id="metricNoWebsite" class="text-sm font-extrabold text-amber-700">0</span>
+                </div>
+                <div class="bg-white border border-emerald-200 bg-emerald-50/40 rounded-lg p-2 text-center shadow-xs">
+                    <span class="text-emerald-600 block text-[10px] uppercase font-bold tracking-wide">Has Website</span>
+                    <span id="metricHasWebsite" class="text-sm font-extrabold text-emerald-700">0</span>
+                </div>
+                <div class="bg-white border border-orange-200 bg-orange-50/40 rounded-lg p-2 text-center shadow-xs">
+                    <span class="text-orange-600 block text-[10px] uppercase font-bold tracking-wide">With Phone</span>
+                    <span id="metricWithPhone" class="text-sm font-extrabold text-orange-700">0</span>
+                </div>
+            </div>
+
             <!-- Leads Results List -->
-            <div id="resultsContainer" class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
+            <div id="resultsContainer" class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3.5">
                 <div id="emptyState" class="h-full flex flex-col items-center justify-center text-center p-8 text-slate-400">
                     <img src="assets/favicon.png" onerror="this.style.display='none'" alt="Mascot" class="w-16 h-16 object-contain mb-3 opacity-40">
                     <p class="text-sm font-semibold text-slate-600">Ready to Discover Leads</p>
-                    <p class="text-xs text-slate-400 max-w-sm mt-1">Enter a business keyword and location above to extract real photos, websites, direct call & WhatsApp numbers.</p>
+                    <p class="text-xs text-slate-400 max-w-sm mt-1">Enter a business keyword and location above to extract real photos, contact details, web status, and potential ratings.</p>
                 </div>
                 <div id="leadsList" class="space-y-3.5 hidden"></div>
             </div>
@@ -511,12 +531,85 @@
             return "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=400&q=80";
         }
 
+        function calculateLeadPotential(item) {
+            const hasWeb = !!item.website;
+            const hasPhone = !!extractPhoneNumber(item);
+            const reviews = item.ratingCount || 0;
+            const rating = item.rating || 0;
+
+            if (!hasWeb && hasPhone && reviews >= 5) {
+                return {
+                    badge: "GOLD OPPORTUNITY",
+                    color: "bg-amber-100 text-amber-800 border-amber-300",
+                    icon: "fa-solid fa-crown",
+                    reason: "Established business with customers but NO website. High conversion for web design or marketing services."
+                };
+            }
+            if (!hasWeb && hasPhone) {
+                return {
+                    badge: "HIGH POTENTIAL",
+                    color: "bg-orange-100 text-orange-800 border-orange-300",
+                    icon: "fa-solid fa-fire",
+                    reason: "Verified phone available without an active website. Immediate lead generation potential."
+                };
+            }
+            if (hasWeb && (rating < 4.0 || reviews < 10)) {
+                return {
+                    badge: "OPTIMIZATION LEAD",
+                    color: "bg-blue-100 text-blue-800 border-blue-300",
+                    icon: "fa-solid fa-chart-line",
+                    reason: "Has an existing website with low reviews or low rating. Target for SEO and reputation management."
+                };
+            }
+            return {
+                badge: "STANDARD LEAD",
+                color: "bg-slate-100 text-slate-700 border-slate-200",
+                icon: "fa-solid fa-circle-check",
+                reason: "Standard active business listing with digital presence."
+            };
+        }
+
+        function updateAnalyticsStrip(places) {
+            const strip = document.getElementById('analyticsStrip');
+            if (!places || places.length === 0) {
+                strip.classList.add('hidden');
+                return;
+            }
+
+            const total = places.length;
+            const hasWeb = places.filter(p => !!p.website).length;
+            const noWeb = total - hasWeb;
+            const withPhone = places.filter(p => !!extractPhoneNumber(p)).length;
+
+            document.getElementById('metricTotal').innerText = total;
+            document.getElementById('metricNoWebsite').innerText = noWeb;
+            document.getElementById('metricHasWebsite').innerText = hasWeb;
+            document.getElementById('metricWithPhone').innerText = withPhone;
+
+            strip.classList.remove('hidden');
+        }
+
+        function toggleGallery(idx) {
+            const gallery = document.getElementById(`gallery-drawer-${idx}`);
+            const btnIcon = document.getElementById(`gallery-icon-${idx}`);
+            if (!gallery) return;
+
+            gallery.classList.toggle('hidden');
+            if (gallery.classList.contains('hidden')) {
+                btnIcon.className = "fa-solid fa-images";
+            } else {
+                btnIcon.className = "fa-solid fa-chevron-up";
+            }
+        }
+
         function renderLeads(places, queryLocation) {
             extractedLeads = places;
             const container = document.getElementById('leadsList');
             const emptyState = document.getElementById('emptyState');
             const exportBtn = document.getElementById('exportBtn');
             const countLabel = document.getElementById('leadCount');
+
+            updateAnalyticsStrip(places);
 
             if (places.length === 0) {
                 emptyState.classList.remove('hidden');
@@ -542,66 +635,123 @@
                 const website = item.website || '';
                 const category = item.category || 'Local Business';
                 const photo = extractImage(item);
+                const potential = calculateLeadPotential(item);
+
+                // Collect photos or gallery candidates
+                const photosList = [];
+                if (item.imageUrl) photosList.push(item.imageUrl);
+                if (item.thumbnailUrl && item.thumbnailUrl !== item.imageUrl) photosList.push(item.thumbnailUrl);
+                if (item.images && Array.isArray(item.images)) {
+                    item.images.forEach(img => {
+                        const url = typeof img === 'string' ? img : img.imageUrl || img.thumbnailUrl;
+                        if (url && !photosList.includes(url)) photosList.push(url);
+                    });
+                }
+                if (photosList.length === 0) {
+                    photosList.push(photo);
+                }
 
                 const card = document.createElement('div');
                 card.id = `lead-card-${idx}`;
-                card.className = "bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-orange-400 hover:shadow-md transition cursor-pointer flex flex-col md:flex-row gap-4";
+                card.className = "bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-orange-400 hover:shadow-md transition cursor-pointer flex flex-col";
                 card.onclick = (e) => {
                     if (e.target.closest('a') || e.target.closest('button')) return;
                     selectBusiness(idx);
                 };
 
                 card.innerHTML = `
-                    <div class="w-full md:w-36 h-28 shrink-0 rounded-lg overflow-hidden bg-slate-100 relative border border-slate-100">
-                        <img src="${photo}" alt="${title}" onerror="this.src='https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=400&q=80'" class="w-full h-full object-cover">
-                        <span class="absolute top-1.5 left-1.5 bg-slate-900/80 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded">
-                            #${idx + 1}
-                        </span>
-                    </div>
-
-                    <div class="flex-1 flex flex-col justify-between">
-                        <div>
-                            <div class="flex items-start justify-between gap-2">
-                                <div>
-                                    <h3 class="text-base font-bold text-slate-900 leading-tight">${title}</h3>
-                                    <span class="inline-block text-[11px] font-semibold text-orange-600 bg-orange-50 px-2 py-0.5 rounded mt-1">${category}</span>
-                                </div>
-                                <div class="flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-800 px-2 py-0.5 rounded-md text-xs font-bold shrink-0">
-                                    <i class="fa-solid fa-star text-amber-500 text-[10px]"></i>
-                                    <span>${rating}</span>
-                                    <span class="text-slate-400 font-normal text-[11px]">(${reviewCount})</span>
-                                </div>
-                            </div>
-                            <p class="text-xs text-slate-500 mt-2 flex items-start gap-1.5">
-                                <i class="fa-solid fa-location-dot text-slate-400 mt-0.5 shrink-0"></i>
-                                <span>${address}</span>
-                            </p>
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <div class="w-full md:w-36 h-28 shrink-0 rounded-lg overflow-hidden bg-slate-100 relative border border-slate-100">
+                            <img src="${photo}" alt="${title}" onerror="this.src='https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=400&q=80'" class="w-full h-full object-cover">
+                            <span class="absolute top-1.5 left-1.5 bg-slate-900/80 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                                #${idx + 1}
+                            </span>
                         </div>
 
-                        <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2 text-xs">
-                            <div class="flex items-center gap-2">
-                                ${phone ? `
-                                    <a href="tel:${phone}" class="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md font-mono hover:bg-emerald-100 transition flex items-center gap-1.5 font-bold">
-                                        <i class="fa-solid fa-phone text-emerald-600"></i> ${phone}
-                                    </a>
-                                    <a href="https://wa.me/${phone.replace(/[^0-9]/g, '')}" target="_blank" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md transition flex items-center gap-1 font-semibold">
-                                        <i class="fa-brands fa-whatsapp"></i> Chat
-                                    </a>
-                                ` : `
-                                    <span class="text-slate-400 italic text-[11px]"><i class="fa-solid fa-phone-slash mr-1"></i>No Direct Phone</span>
-                                `}
+                        <div class="flex-1 flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-start justify-between gap-2">
+                                    <div>
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <h3 class="text-base font-bold text-slate-900 leading-tight">${title}</h3>
+                                            <span class="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded border ${potential.color}">
+                                                <i class="${potential.icon} text-[9px]"></i> ${potential.badge}
+                                            </span>
+                                        </div>
+                                        <div class="flex items-center gap-2 mt-1 flex-wrap">
+                                            <span class="text-[11px] font-semibold text-orange-600 bg-orange-50 px-2 py-0.5 rounded">${category}</span>
+                                            ${!website ? `
+                                                <span class="text-[11px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded flex items-center gap-1">
+                                                    <i class="fa-solid fa-triangle-exclamation"></i> No Website Found
+                                                </span>
+                                            ` : `
+                                                <span class="text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded flex items-center gap-1">
+                                                    <i class="fa-solid fa-check"></i> Has Website
+                                                </span>
+                                            `}
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-800 px-2 py-0.5 rounded-md text-xs font-bold shrink-0">
+                                        <i class="fa-solid fa-star text-amber-500 text-[10px]"></i>
+                                        <span>${rating}</span>
+                                        <span class="text-slate-400 font-normal text-[11px]">(${reviewCount})</span>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-2 flex items-start gap-1.5">
+                                    <i class="fa-solid fa-location-dot text-slate-400 mt-0.5 shrink-0"></i>
+                                    <span>${address}</span>
+                                </p>
+                                <p class="text-[11px] text-slate-400 italic mt-1">${potential.reason}</p>
                             </div>
-                            
-                            <div class="flex items-center gap-2">
-                                ${website ? `
-                                    <a href="${website}" target="_blank" class="px-2.5 py-1 bg-slate-100 hover:bg-orange-50 hover:text-orange-600 text-slate-700 border border-slate-200 rounded-md font-medium transition flex items-center gap-1">
-                                        <i class="fa-solid fa-globe text-slate-400"></i> Website
-                                    </a>
-                                ` : ''}
-                                <button onclick="selectBusiness(${idx})" class="px-2.5 py-1 bg-orange-500 hover:bg-orange-600 text-white rounded-md font-semibold transition flex items-center gap-1">
-                                    <i class="fa-solid fa-map-location-dot"></i> View on Map
-                                </button>
+
+                            <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2 text-xs">
+                                <div class="flex items-center gap-2">
+                                    ${phone ? `
+                                        <a href="tel:${phone}" class="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md font-mono hover:bg-emerald-100 transition flex items-center gap-1.5 font-bold">
+                                            <i class="fa-solid fa-phone text-emerald-600"></i> ${phone}
+                                        </a>
+                                        <a href="https://wa.me/${phone.replace(/[^0-9]/g, '')}" target="_blank" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md transition flex items-center gap-1 font-semibold">
+                                            <i class="fa-brands fa-whatsapp"></i> Chat
+                                        </a>
+                                    ` : `
+                                        <span class="text-slate-400 italic text-[11px]"><i class="fa-solid fa-phone-slash mr-1"></i>No Direct Phone</span>
+                                    `}
+                                </div>
+                                
+                                <div class="flex items-center gap-2">
+                                    <button type="button" onclick="toggleGallery(${idx})" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-md font-medium transition flex items-center gap-1">
+                                        <i id="gallery-icon-${idx}" class="fa-solid fa-images text-slate-500"></i>
+                                        <span>Photos (${photosList.length})</span>
+                                    </button>
+                                    ${website ? `
+                                        <a href="${website}" target="_blank" class="px-2.5 py-1 bg-slate-100 hover:bg-orange-50 hover:text-orange-600 text-slate-700 border border-slate-200 rounded-md font-medium transition flex items-center gap-1">
+                                            <i class="fa-solid fa-globe text-slate-400"></i> Website
+                                        </a>
+                                    ` : ''}
+                                    <button onclick="selectBusiness(${idx})" class="px-2.5 py-1 bg-orange-500 hover:bg-orange-600 text-white rounded-md font-semibold transition flex items-center gap-1">
+                                        <i class="fa-solid fa-map-location-dot"></i> View on Map
+                                    </button>
+                                </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Dropdown Images Drawer -->
+                    <div id="gallery-drawer-${idx}" class="hidden mt-3 pt-3 border-t border-slate-200 bg-slate-50 rounded-lg p-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                <i class="fa-solid fa-camera text-orange-500"></i> Place & Review Photos
+                            </span>
+                            <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(title + ' ' + address)}" target="_blank" class="text-[11px] text-orange-600 hover:underline">
+                                View all on Google Maps &rarr;
+                            </a>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            ${photosList.map((imgSrc, i) => `
+                                <a href="${imgSrc}" target="_blank" class="h-20 rounded-md overflow-hidden bg-slate-200 block border border-slate-300 hover:opacity-90 transition">
+                                    <img src="${imgSrc}" onerror="this.src='https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=400&q=80'" alt="Photo ${i+1}" class="w-full h-full object-cover">
+                                </a>
+                            `).join('')}
                         </div>
                     </div>
                 `;
@@ -647,6 +797,7 @@
             document.getElementById('leadsList').innerHTML = '';
             document.getElementById('leadsList').classList.add('hidden');
             document.getElementById('emptyState').classList.remove('hidden');
+            document.getElementById('analyticsStrip').classList.add('hidden');
             document.getElementById('leadCount').innerText = '0';
             document.getElementById('exportBtn').disabled = true;
             document.getElementById('activeMapBusinessTitle').innerText = "Live Google Maps View";
@@ -655,17 +806,21 @@
 
         function exportToCSV() {
             if (extractedLeads.length === 0) return;
-            const headers = ["Title", "Category", "Phone", "Rating", "Review Count", "Address", "Website", "Photo URL"];
-            const rows = extractedLeads.map(item => [
-                `"${(item.title || '').replace(/"/g, '""')}"`,
-                `"${(item.category || '').replace(/"/g, '""')}"`,
-                `"${extractPhoneNumber(item) || ''}"`,
-                `"${item.rating || ''}"`,
-                `"${item.ratingCount || ''}"`,
-                `"${(item.address || '').replace(/"/g, '""')}"`,
-                `"${item.website || ''}"`,
-                `"${extractImage(item) || ''}"`
-            ]);
+            const headers = ["Title", "Category", "Phone", "Rating", "Review Count", "Address", "Website", "Lead Potential", "Photo URL"];
+            const rows = extractedLeads.map(item => {
+                const pot = calculateLeadPotential(item);
+                return [
+                    `"${(item.title || '').replace(/"/g, '""')}"`,
+                    `"${(item.category || '').replace(/"/g, '""')}"`,
+                    `"${extractPhoneNumber(item) || ''}"`,
+                    `"${item.rating || ''}"`,
+                    `"${item.ratingCount || ''}"`,
+                    `"${(item.address || '').replace(/"/g, '""')}"`,
+                    `"${item.website || ''}"`,
+                    `"${pot.badge}"`,
+                    `"${extractImage(item) || ''}"`
+                ];
+            });
 
             const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
             const encodedUri = encodeURI(csvContent);
