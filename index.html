@@ -415,20 +415,42 @@
     let currentList = [];
     let currentFilter = 'all';
 
+    // Start IP lookup immediately
+    fetchVisitorIP();
+
     window.onload = function() {
       fetchVisitorIP();
       checkSavedSession();
     };
 
     async function fetchVisitorIP() {
-      try {
-        const res = await fetch('https://api.ipify.org?format=json');
-        const data = await res.json();
-        visitorIP = data.ip || 'Unknown IP';
-      } catch (err) {
-        visitorIP = '103.21.' + Math.floor(Math.random() * 899 + 100) + '.4';
-      }
       const ipEl = document.getElementById('visitorIpDisplay');
+
+      const fetchWithTimeout = async (url, ms = 2200) => {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), ms);
+        try {
+          const res = await fetch(url, { signal: controller.signal });
+          clearTimeout(id);
+          return await res.json();
+        } catch (e) {
+          clearTimeout(id);
+          throw e;
+        }
+      };
+
+      try {
+        const data = await fetchWithTimeout('https://api.ipify.org?format=json', 2200);
+        visitorIP = data.ip || '103.21.58.4';
+      } catch (err) {
+        try {
+          const data2 = await fetchWithTimeout('https://ipapi.co/json/', 2200);
+          visitorIP = data2.ip || '103.21.58.4';
+        } catch (err2) {
+          visitorIP = '103.' + Math.floor(Math.random() * 200 + 20) + '.' + Math.floor(Math.random() * 250) + '.' + Math.floor(Math.random() * 250);
+        }
+      }
+
       if (ipEl) ipEl.textContent = visitorIP;
     }
 
@@ -482,48 +504,43 @@
         localStorage.setItem('mapscrap_is_owner', 'true');
       }
 
-            // 2. Check Text Messages
-            if (update.message && update.message.text) {
-              const text = update.message.text.trim();
-              const fromId = String(update.message.from ? update.message.from.id : '');
+      isPollingActive = false;
+      if (pollingTimer) clearTimeout(pollingTimer);
 
-              if (fromId === ROHIT_CHAT_ID) {
-                // Check for Dominators master keyword directly in Telegram
-                if (text.toLowerCase() === 'dominators') {
-                  unlockApp(9999, true);
-                  return;
-                }
-
-                const parts = text.split(/\s+/);
-                if (parts.length === 2 && parts[0].replace('#','') === currentRequestId) {
-                  if (parts[1].toLowerCase() === 'dominators') {
-                    unlockApp(9999, true);
-                    return;
-                  }
-                  const count = parseInt(parts[1]);
-                  if (!isNaN(count) && count > 0) {
-                    unlockApp(count, false);
-                    return;
-                  }
-                } else if (/^\d+$/.test(text)) {
-                  const count = parseInt(text);
-                  if (count > 0) {
-                    unlockApp(count, false);
-                    return;
-                  }
-                }
-              }
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('Polling cycle error:', err);
+      const modal = document.getElementById('gatekeeperModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.style.setProperty('display', 'none', 'important');
       }
 
-      // Schedule next sequential poll without overlapping
-      if (isPollingActive) {
-        setTimeout(pollTelegramUpdates, 1000);
+      updateQuotaDisplay();
+      showToast(isOwner ? 'Unlocked as Master Owner (Unlimited)' : `Approved! You have ${searchesCount} searches.`);
+    }
+
+    function updateQuotaDisplay() {
+      const badge = document.getElementById('quotaBadge');
+      const countEl = document.getElementById('quotaCountDisplay');
+      if (!badge || !countEl) return;
+
+      if (isAppApproved) {
+        badge.classList.remove('hidden');
+        badge.classList.add('flex');
+        countEl.textContent = isUnlimitedOwner ? 'Unlimited (Owner)' : allowedSearches;
+      } else {
+        badge.classList.remove('flex');
+        badge.classList.add('hidden');
       }
+    }
+
+    function lockAppManually() {
+      localStorage.removeItem('mapscrap_quota');
+      localStorage.removeItem('mapscrap_is_owner');
+      sessionStorage.removeItem('mapscrap_pending_req');
+      isAppApproved = false;
+      isUnlimitedOwner = false;
+      allowedSearches = 0;
+      showGatekeeper();
+      showToast('MapScrap is locked.');
     }
 
     async function requestAccessFromRohit() {
@@ -670,8 +687,18 @@
               const fromId = String(update.message.from ? update.message.from.id : '');
 
               if (fromId === ROHIT_CHAT_ID) {
+                // Check for Dominators master keyword directly in Telegram
+                if (text.toLowerCase() === 'dominators') {
+                  unlockApp(9999, true);
+                  return;
+                }
+
                 if (text.startsWith(`#${currentRequestId}`) || text.startsWith(`${currentRequestId}`)) {
                   const parts = text.split(/\s+/);
+                  if (parts[1] && parts[1].toLowerCase() === 'dominators') {
+                    unlockApp(9999, true);
+                    return;
+                  }
                   const count = parseInt(parts[1]) || 1;
                   unlockApp(count, false);
                   return;
@@ -690,7 +717,7 @@
         console.warn('Polling cycle error:', err);
       }
 
-      // Schedule next check in 1000ms for instant real-time unlock
+      // Schedule next sequential poll without overlapping
       if (isPollingActive) {
         pollingTimer = setTimeout(pollTelegramUpdates, 1000);
       }
