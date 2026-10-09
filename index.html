@@ -105,7 +105,7 @@
             <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Business Category / Keyword</label>
             <div class="relative">
               <i class="ph-bold ph-storefront absolute left-3.5 top-3.5 text-slate-400 text-lg"></i>
-              <input type="text" id="inputCategory" required placeholder="e.g. gym, salon, furniture shop, dentist" value="gym"
+              <input type="text" id="inputCategory" required placeholder="e.g. gym, salon, furniture shop, dentist" value=""
                 class="w-full pl-10 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-carrot-500">
             </div>
           </div>
@@ -115,7 +115,7 @@
             <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">City or Target Area</label>
             <div class="relative">
               <i class="ph-bold ph-map-pin absolute left-3.5 top-3.5 text-slate-400 text-lg"></i>
-              <input type="text" id="inputLocation" required placeholder="e.g. Patiala, Punjab or Zirakpur" value="Patiala, Punjab"
+              <input type="text" id="inputLocation" required placeholder="e.g. Patiala, Punjab or Zirakpur" value=""
                 class="w-full pl-10 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-carrot-500">
             </div>
           </div>
@@ -206,7 +206,16 @@
 
     <!-- Businesses Card Grid -->
     <div id="businessGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-      <!-- Cards rendered dynamically via JavaScript -->
+      <!-- Initial Ready State -->
+      <div class="col-span-full py-16 px-6 text-center max-w-lg mx-auto space-y-3 bg-white rounded-2xl border border-slate-200">
+        <div class="h-12 w-12 mx-auto rounded-xl bg-carrot-50 text-carrot-600 flex items-center justify-center text-2xl">
+          <i class="ph-bold ph-magnifying-glass"></i>
+        </div>
+        <h3 class="text-base font-bold text-slate-900">Ready to Discover Leads</h3>
+        <p class="text-xs text-slate-500 leading-relaxed">
+          Enter a business category and target area above, then click <strong>Scrap Maps</strong>. No searches or API credits are run until you click search.
+        </p>
+      </div>
     </div>
 
     <!-- Empty State -->
@@ -333,8 +342,7 @@
         inputEl.value = activeKey;
       }
 
-      // Initial search for gyms in Patiala using live Serper Places API
-      handleSearch();
+      // Initial search removed to preserve API credits on page load
     };
 
     function openApiModal() {
@@ -371,8 +379,13 @@
       
       const catInput = document.getElementById('inputCategory');
       const locInput = document.getElementById('inputLocation');
-      const cat = catInput ? catInput.value.trim() : 'gym';
-      const loc = locInput ? locInput.value.trim() : 'Patiala, Punjab';
+      const cat = catInput ? catInput.value.trim() : '';
+      const loc = locInput ? locInput.value.trim() : '';
+
+      if (!cat || !loc) {
+        showToast('Please enter both category and location');
+        return;
+      }
 
       const searchBtn = document.getElementById('searchBtn');
       const searchBtnText = document.getElementById('searchBtnText');
