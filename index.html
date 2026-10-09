@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MapScrap — Automated Google Maps Lead Discovery</title>
+  <title>MapScrap — By Rohit Mehmi</title>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -120,7 +120,7 @@
         <div id="ownerLoginForm" class="hidden pt-2 space-y-2 border-t border-slate-100">
           <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Owner Master Key</label>
           <div class="flex space-x-2">
-            <input type="password" id="ownerKeyInput" placeholder="Enter ROHIT-ADMIN" class="flex-1 px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-carrot-500 font-mono">
+            <input type="password" id="ownerKeyInput" placeholder="Enter Dominators or ROHIT-ADMIN" class="flex-1 px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-carrot-500 font-mono">
             <button onclick="submitOwnerKey()" class="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg transition">Unlock</button>
           </div>
         </div>
@@ -151,7 +151,7 @@
             <span>Status:</span>
             <span class="inline-flex items-center font-bold text-amber-600">
               <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse mr-1.5"></span>
-              Waiting for Approval
+              Waiting for Approval (Live Sync)
             </span>
           </div>
         </div>
@@ -409,6 +409,7 @@
     let visitorIP = 'Detecting...';
     let currentRequestId = null;
     let isPollingActive = false;
+    let pollingTimer = null;
     let lastTelegramUpdateId = 0;
 
     let currentList = [];
@@ -434,6 +435,7 @@
     function checkSavedSession() {
       const savedQuota = localStorage.getItem('mapscrap_quota');
       const isOwner = localStorage.getItem('mapscrap_is_owner');
+      const pendingReq = sessionStorage.getItem('mapscrap_pending_req');
 
       if (isOwner === 'true') {
         unlockApp(9999, true);
@@ -442,9 +444,15 @@
 
       if (savedQuota && parseInt(savedQuota) > 0) {
         unlockApp(parseInt(savedQuota), false);
-      } else {
-        showGatekeeper();
+        return;
       }
+
+      if (pendingReq) {
+        resumeWaitingRequest(pendingReq);
+        return;
+      }
+
+      showGatekeeper();
     }
 
     function showGatekeeper() {
@@ -453,7 +461,7 @@
       const formState = document.getElementById('gatekeeperFormState');
       const waitState = document.getElementById('gatekeeperWaitingState');
       if (modal) {
-        modal.style.display = 'flex';
+        modal.style.setProperty('display', 'flex', 'important');
         modal.classList.remove('hidden');
       }
       if (formState) formState.classList.remove('hidden');
@@ -469,43 +477,52 @@
       if (!isOwner) {
         localStorage.setItem('mapscrap_quota', allowedSearches.toString());
         localStorage.removeItem('mapscrap_is_owner');
+        sessionStorage.removeItem('mapscrap_pending_req');
       } else {
         localStorage.setItem('mapscrap_is_owner', 'true');
       }
 
-      // Hide all gatekeeper modals
-      isPollingActive = false;
-      const modals = document.querySelectorAll('#gatekeeperModal');
-      modals.forEach(m => {
-        m.classList.add('hidden');
-        m.style.display = 'none';
-      });
+            // 2. Check Text Messages
+            if (update.message && update.message.text) {
+              const text = update.message.text.trim();
+              const fromId = String(update.message.from ? update.message.from.id : '');
 
-      updateQuotaDisplay();
-      showToast(isOwner ? '👑 Rohit Mehmi Master Access Active' : `🎉 Access Granted! You have ${searchesCount} search(es).`);
-    }
+              if (fromId === ROHIT_CHAT_ID) {
+                // Check for Dominators master keyword directly in Telegram
+                if (text.toLowerCase() === 'dominators') {
+                  unlockApp(9999, true);
+                  return;
+                }
 
-    function lockAppManually() {
-      localStorage.removeItem('mapscrap_quota');
-      localStorage.removeItem('mapscrap_is_owner');
-      allowedSearches = 0;
-      isUnlimitedOwner = false;
-      showGatekeeper();
-      showToast('App is now locked');
-    }
+                const parts = text.split(/\s+/);
+                if (parts.length === 2 && parts[0].replace('#','') === currentRequestId) {
+                  if (parts[1].toLowerCase() === 'dominators') {
+                    unlockApp(9999, true);
+                    return;
+                  }
+                  const count = parseInt(parts[1]);
+                  if (!isNaN(count) && count > 0) {
+                    unlockApp(count, false);
+                    return;
+                  }
+                } else if (/^\d+$/.test(text)) {
+                  const count = parseInt(text);
+                  if (count > 0) {
+                    unlockApp(count, false);
+                    return;
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Polling cycle error:', err);
+      }
 
-    function updateQuotaDisplay() {
-      const quotaBadge = document.getElementById('quotaBadge');
-      const quotaCountDisplay = document.getElementById('quotaCountDisplay');
-      if (!quotaBadge || !quotaCountDisplay) return;
-
-      if (isAppApproved) {
-        quotaBadge.classList.remove('hidden');
-        quotaBadge.classList.add('flex');
-        quotaCountDisplay.textContent = isUnlimitedOwner ? 'Unlimited' : allowedSearches;
-      } else {
-        quotaBadge.classList.add('hidden');
-        quotaBadge.classList.remove('flex');
+      // Schedule next sequential poll without overlapping
+      if (isPollingActive) {
+        setTimeout(pollTelegramUpdates, 1000);
       }
     }
 
@@ -527,6 +544,7 @@
       }
 
       currentRequestId = Math.floor(1000 + Math.random() * 9000).toString();
+      sessionStorage.setItem('mapscrap_pending_req', currentRequestId);
       const timestamp = new Date().toLocaleString();
 
       const messageText = `🔔 <b>New MapScrap Access Request</b>\n\n` +
@@ -579,7 +597,7 @@
         if (waitState) waitState.classList.remove('hidden');
         if (waitIdEl) waitIdEl.textContent = '#' + currentRequestId;
 
-        await primeTelegramUpdates();
+        // Start fast 1-second auto-unlock listener
         isPollingActive = true;
         pollTelegramUpdates();
         showToast('Request sent to Rohit Mehmi!');
@@ -595,28 +613,38 @@
       }
     }
 
-    async function primeTelegramUpdates() {
-      try {
-        const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates?offset=-1`);
-        const data = await res.json();
-        if (data.ok && data.result.length > 0) {
-          lastTelegramUpdateId = data.result[data.result.length - 1].update_id;
-        }
-      } catch (e) {
-        console.warn('Could not prime telegram updates:', e);
+    function resumeWaitingRequest(reqId) {
+      currentRequestId = reqId;
+      const modal = document.getElementById('gatekeeperModal');
+      const formState = document.getElementById('gatekeeperFormState');
+      const waitState = document.getElementById('gatekeeperWaitingState');
+      const waitIdEl = document.getElementById('waitingReqId');
+
+      if (modal) {
+        modal.style.setProperty('display', 'flex', 'important');
+        modal.classList.remove('hidden');
       }
+      if (formState) formState.classList.add('hidden');
+      if (waitState) waitState.classList.remove('hidden');
+      if (waitIdEl) waitIdEl.textContent = '#' + currentRequestId;
+
+      isPollingActive = true;
+      pollTelegramUpdates();
     }
 
     async function pollTelegramUpdates() {
       if (!isPollingActive) return;
 
       try {
-        const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates?offset=${lastTelegramUpdateId + 1}&timeout=3`);
+        const offsetParam = lastTelegramUpdateId > 0 ? `offset=${lastTelegramUpdateId}` : 'offset=-5';
+        const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates?${offsetParam}&timeout=0`);
         const data = await res.json();
 
         if (data.ok && data.result && data.result.length > 0) {
           for (const update of data.result) {
-            lastTelegramUpdateId = update.update_id;
+            if (update.update_id >= lastTelegramUpdateId) {
+              lastTelegramUpdateId = update.update_id + 1;
+            }
 
             // 1. Check Button Clicks
             if (update.callback_query) {
@@ -625,33 +653,31 @@
 
               if (cbData.startsWith(`APPR:${currentRequestId}:`)) {
                 const count = parseInt(cbData.split(':')[2]) || 1;
-                fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery?callback_query_id=${cb.id}&text=Approved ${count} searches!`);
+                fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery?callback_query_id=${cb.id}&text=Approved ${count} searches!`).catch(() => {});
                 unlockApp(count, false);
                 return;
               } else if (cbData.startsWith(`REJ:${currentRequestId}:`)) {
-                fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery?callback_query_id=${cb.id}&text=Request rejected.`);
+                fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery?callback_query_id=${cb.id}&text=Request rejected.`).catch(() => {});
                 cancelWaitingRequest();
                 showToast('Rohit declined your access request.');
                 return;
               }
             }
 
-            // 2. Check Text Messages
+            // 2. Check Direct Text Replies
             if (update.message && update.message.text) {
               const text = update.message.text.trim();
               const fromId = String(update.message.from ? update.message.from.id : '');
 
               if (fromId === ROHIT_CHAT_ID) {
-                const parts = text.split(/\s+/);
-                if (parts.length === 2 && parts[0].replace('#','') === currentRequestId) {
-                  const count = parseInt(parts[1]);
-                  if (!isNaN(count) && count > 0) {
-                    unlockApp(count, false);
-                    return;
-                  }
+                if (text.startsWith(`#${currentRequestId}`) || text.startsWith(`${currentRequestId}`)) {
+                  const parts = text.split(/\s+/);
+                  const count = parseInt(parts[1]) || 1;
+                  unlockApp(count, false);
+                  return;
                 } else if (/^\d+$/.test(text)) {
                   const count = parseInt(text);
-                  if (count > 0) {
+                  if (count > 0 && count <= 500) {
                     unlockApp(count, false);
                     return;
                   }
@@ -664,15 +690,17 @@
         console.warn('Polling cycle error:', err);
       }
 
-      // Schedule next sequential poll without overlapping
+      // Schedule next check in 1000ms for instant real-time unlock
       if (isPollingActive) {
-        setTimeout(pollTelegramUpdates, 2000);
+        pollingTimer = setTimeout(pollTelegramUpdates, 1000);
       }
     }
 
     function cancelWaitingRequest() {
       isPollingActive = false;
+      if (pollingTimer) clearTimeout(pollingTimer);
       currentRequestId = null;
+      sessionStorage.removeItem('mapscrap_pending_req');
       const formState = document.getElementById('gatekeeperFormState');
       const waitState = document.getElementById('gatekeeperWaitingState');
       if (formState) formState.classList.remove('hidden');
@@ -687,7 +715,7 @@
     function submitOwnerKey() {
       const input = document.getElementById('ownerKeyInput');
       const val = input ? input.value.trim() : '';
-      if (val === 'ROHIT-ADMIN') {
+      if (val === 'Dominators' || val.toLowerCase() === 'dominators' || val === 'ROHIT-ADMIN') {
         unlockApp(9999, true);
       } else {
         showToast('Invalid Owner Key');
