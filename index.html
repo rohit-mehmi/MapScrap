@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MapScrap — By Rohit Mehmi</title>
+  <title>MapScrap — Automated Google Maps Lead Discovery</title>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -22,8 +22,8 @@
               300: '#fdba74',
               400: '#fb923c',
               500: '#f97316',
-              600: '#ea580c', // Deep Carrot primary
-              700: '#c2410c', // Rich Carrot hover
+              600: '#ea580c',
+              700: '#c2410c',
               800: '#9a3412',
               900: '#7c2d12',
             },
@@ -99,7 +99,7 @@
 
           <div>
             <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Purpose / Note (Optional)</label>
-            <input type="text" id="visitorNoteInput" placeholder="e.g. Searching Patiala gym leads"
+            <input type="text" id="visitorNoteInput" placeholder="e.g. Searching local gym leads"
               class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-carrot-500">
           </div>
 
@@ -116,11 +116,11 @@
           </button>
         </div>
 
-        <!-- Hidden Owner Quick Login Form -->
+        <!-- Hidden Owner Quick Login Form with secret placeholder -->
         <div id="ownerLoginForm" class="hidden pt-2 space-y-2 border-t border-slate-100">
           <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Owner Master Key</label>
           <div class="flex space-x-2">
-            <input type="password" id="ownerKeyInput" placeholder="Enter Dominators or ROHIT-ADMIN" class="flex-1 px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-carrot-500 font-mono">
+            <input type="password" id="ownerKeyInput" placeholder="Enter master key" class="flex-1 px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-carrot-500 font-mono">
             <button onclick="submitOwnerKey()" class="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg transition">Unlock</button>
           </div>
         </div>
@@ -306,7 +306,7 @@
       </div>
 
       <div class="text-xs text-slate-500">
-        Click phone numbers to dial. Click "Audit & Pitch" to generate ready client pitches.
+        Click phone to dial or WhatsApp directly. Click "Audit & Pitch" to generate ready proposals.
       </div>
 
     </div>
@@ -407,6 +407,7 @@
     let allowedSearches = 0;
     let isUnlimitedOwner = false;
     let visitorIP = 'Detecting...';
+    let visitorCountry = 'in'; // Default to India for regional phone precision
     let currentRequestId = null;
     let isPollingActive = false;
     let pollingTimer = null;
@@ -415,7 +416,7 @@
     let currentList = [];
     let currentFilter = 'all';
 
-    // Start IP lookup immediately
+    // Immediate initial execution
     fetchVisitorIP();
 
     window.onload = function() {
@@ -423,6 +424,7 @@
       checkSavedSession();
     };
 
+    // Ultra-reliable IP fetch with strict 2.2s timeout fallback so it never hangs
     async function fetchVisitorIP() {
       const ipEl = document.getElementById('visitorIpDisplay');
 
@@ -446,6 +448,7 @@
         try {
           const data2 = await fetchWithTimeout('https://ipapi.co/json/', 2200);
           visitorIP = data2.ip || '103.21.58.4';
+          if (data2.country_code) visitorCountry = data2.country_code.toLowerCase();
         } catch (err2) {
           visitorIP = '103.' + Math.floor(Math.random() * 200 + 20) + '.' + Math.floor(Math.random() * 250) + '.' + Math.floor(Math.random() * 250);
         }
@@ -614,7 +617,7 @@
         if (waitState) waitState.classList.remove('hidden');
         if (waitIdEl) waitIdEl.textContent = '#' + currentRequestId;
 
-        // Start fast 1-second auto-unlock listener
+        // Start real-time 1-second auto-unlock polling
         isPollingActive = true;
         pollTelegramUpdates();
         showToast('Request sent to Rohit Mehmi!');
@@ -687,7 +690,7 @@
               const fromId = String(update.message.from ? update.message.from.id : '');
 
               if (fromId === ROHIT_CHAT_ID) {
-                // Check for Dominators master keyword directly in Telegram
+                // Check for Dominators master keyword in Telegram
                 if (text.toLowerCase() === 'dominators') {
                   unlockApp(9999, true);
                   return;
@@ -789,8 +792,8 @@
               <i class="ph-bold ph-spinner-gap text-3xl"></i>
             </div>
             <div>
-              <h3 class="text-base font-extrabold text-slate-900">Scraping Live Google Maps via Serper</h3>
-              <p class="text-xs text-slate-500 mt-1">Pulling real, active businesses, phone numbers, and websites for <strong>"${cat}" in "${loc}"</strong>...</p>
+              <h3 class="text-base font-extrabold text-slate-900">Scraping Live Google Maps Leads</h3>
+              <p class="text-xs text-slate-500 mt-1">Extracting verified business profiles, active phones, and websites for <strong>"${cat}" in "${loc}"</strong>...</p>
             </div>
           </div>
         `;
@@ -829,8 +832,41 @@
       }
     }
 
+    // Helper: Deep Phone Number Extractor across all possible Google Place attributes
+    function extractPhoneNumber(p) {
+      if (p.phoneNumber && typeof p.phoneNumber === 'string' && p.phoneNumber.trim()) return p.phoneNumber.trim();
+      if (p.phone && typeof p.phone === 'string' && p.phone.trim()) return p.phone.trim();
+      if (p.telephone && typeof p.telephone === 'string' && p.telephone.trim()) return p.telephone.trim();
+      if (p.contactNumber && typeof p.contactNumber === 'string' && p.contactNumber.trim()) return p.contactNumber.trim();
+      if (p.phone_number && typeof p.phone_number === 'string' && p.phone_number.trim()) return p.phone_number.trim();
+
+      // Check extensions or descriptions for phone numbers
+      if (Array.isArray(p.extensions)) {
+        for (const ext of p.extensions) {
+          if (typeof ext === 'string') {
+            const match = ext.match(/(\+?\d[\d\s\-\(\)]{8,15}\d)/);
+            if (match) return match[1].trim();
+          }
+        }
+      }
+      return 'Not Listed';
+    }
+
     async function fetchLiveFromSerper(category, location) {
       const query = `${category} in ${location}`;
+
+      // Smart Country detection: if query mentions India/Punjab/Patiala/Zirakpur or visitor is from India, pass gl: "in"
+      let countryParam = 'in';
+      const locLower = location.toLowerCase();
+      if (locLower.includes('usa') || locLower.includes('united states') || locLower.includes('california') || locLower.includes('ny')) {
+        countryParam = 'us';
+      } else if (locLower.includes('uk') || locLower.includes('london')) {
+        countryParam = 'gb';
+      } else if (locLower.includes('canada') || locLower.includes('toronto')) {
+        countryParam = 'ca';
+      } else if (visitorCountry && visitorCountry !== 'in') {
+        countryParam = visitorCountry;
+      }
 
       const response = await fetch('https://google.serper.dev/places', {
         method: 'POST',
@@ -838,7 +874,11 @@
           'X-API-KEY': DEFAULT_SERPER_KEY,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ q: query })
+        body: JSON.stringify({ 
+          q: query,
+          gl: countryParam,
+          hl: 'en'
+        })
       });
 
       if (!response.ok) {
@@ -850,6 +890,7 @@
 
       return places.map((p, idx) => {
         const hasWeb = Boolean(p.website && p.website.trim() !== '');
+        const phone = extractPhoneNumber(p);
         
         let photo = p.thumbnailUrl;
         if (!photo) {
@@ -864,7 +905,7 @@
           name: p.title || `${category} Business`,
           category: p.category || category,
           address: p.address || `${location}`,
-          phone: p.phoneNumber || 'Not Listed',
+          phone: phone,
           rating: typeof p.rating === 'number' ? p.rating : 4.5,
           reviews: typeof p.ratingCount === 'number' ? p.ratingCount : (p.reviews || 0),
           hasWebsite: hasWeb,
@@ -918,12 +959,17 @@
           websiteBadge = `
             <span class="inline-flex items-center space-x-1 text-xs font-bold text-white bg-carrot-600 px-2.5 py-1 rounded-lg shadow-sm">
               <i class="ph-bold ph-warning-circle"></i>
-              <span>NO WEBSITE (High Value)</span>
+              <span>NO WEBSITE (Golden Lead)</span>
             </span>
           `;
         }
 
         const phoneClean = biz.phone.replace(/[^0-9+]/g, '');
+        const hasValidPhone = phoneClean && phoneClean !== 'NotListed' && phoneClean.length >= 7;
+
+        // WhatsApp direct link format (normalize numbers for India / international)
+        let waNumber = phoneClean.replace('+', '');
+        if (waNumber.length === 10) waNumber = '91' + waNumber; // Default 10-digit Indian numbers to +91
 
         card.innerHTML = `
           <div class="relative h-44 w-full bg-slate-100 overflow-hidden">
@@ -958,25 +1004,35 @@
 
               <p class="text-xs text-slate-700 font-mono flex items-center space-x-1.5 pt-0.5">
                 <i class="ph-bold ph-phone text-carrot-600 text-sm flex-shrink-0"></i>
-                ${phoneClean && phoneClean !== 'NotListed' ? `<a href="tel:${phoneClean}" class="font-bold hover:text-carrot-600">${biz.phone}</a>` : `<span class="text-slate-400">${biz.phone}</span>`}
+                ${hasValidPhone ? `<a href="tel:${phoneClean}" class="font-bold text-slate-900 hover:text-carrot-600 underline">${biz.phone}</a>` : `<span class="text-slate-400 font-sans italic">${biz.phone}</span>`}
               </p>
             </div>
 
-            <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-1.5">
               <a href="${biz.mapsUrl}" target="_blank" rel="noopener noreferrer" 
-                 class="flex-1 py-2 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-lg border border-slate-200 flex items-center justify-center space-x-1.5 transition">
+                 class="flex-1 py-2 px-1 bg-slate-100 hover:bg-slate-200 text-slate-800 text-[11px] font-bold rounded-lg border border-slate-200 flex items-center justify-center space-x-1 transition">
                 <i class="ph-bold ph-map-trifold text-carrot-600 text-sm"></i>
-                <span>Google Maps</span>
+                <span>Maps</span>
               </a>
 
-              ${phoneClean && phoneClean !== 'NotListed' ? `
+              ${hasValidPhone ? `
                 <a href="tel:${phoneClean}" 
-                   class="flex-1 py-2 px-2 bg-carrot-600 hover:bg-carrot-700 text-white text-xs font-bold rounded-lg flex items-center justify-center space-x-1.5 transition shadow-sm">
+                   class="flex-1 py-2 px-1 bg-carrot-600 hover:bg-carrot-700 text-white text-[11px] font-bold rounded-lg flex items-center justify-center space-x-1 transition shadow-sm">
                   <i class="ph-bold ph-phone-call text-sm"></i>
                   <span>Call</span>
                 </a>
+                <a href="https://wa.me/${waNumber}?text=${encodeURIComponent('Hello ' + biz.name + ', I found your listing on Google Maps.')}" 
+                   target="_blank" rel="noopener noreferrer"
+                   class="py-2 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center justify-center transition shadow-sm"
+                   title="WhatsApp">
+                  <i class="ph-bold ph-whatsapp-logo text-base"></i>
+                </a>
               ` : `
-                <span class="flex-1 py-2 px-2 bg-slate-50 text-slate-400 text-xs font-semibold rounded-lg text-center">No Phone</span>
+                <a href="https://www.google.com/search?q=${encodeURIComponent(biz.name + ' ' + biz.address + ' phone contact')}" 
+                   target="_blank" rel="noopener noreferrer"
+                   class="flex-1 py-2 px-1 bg-slate-50 hover:bg-slate-100 text-slate-600 text-[11px] font-semibold rounded-lg text-center border border-slate-200">
+                  Find on Google
+                </a>
               `}
 
               <button onclick="copyBusinessDetails('${biz.id}')" title="Copy Details" 
